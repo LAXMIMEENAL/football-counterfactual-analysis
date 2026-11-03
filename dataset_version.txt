@@ -1,0 +1,1 @@
+['tag:github.com,2008:Grit::Commit/4b73468fc5b0f1950f9f66fada70ad3a4f9327cb'] ['2026-09-07T16:27:15Z'] ['\n        chore: add required labels check (#79)\n    ']
