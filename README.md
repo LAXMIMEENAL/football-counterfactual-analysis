@@ -1,35 +1,80 @@
-# Reproduction package
-Setup: Python 3.10+, `pip install -r requirements.txt` (video_future_work/ additionally needs ultralytics, opencv-python, pandas).
-Needs internet access to raw.githubusercontent.com (StatsBomb open data). One CPU core is enough; the full run takes roughly 30-40 minutes
-(the bootstrap steps in analyze.py and exp2.py are the slowest).
+# Reproduction Package
 
-Data: the raw StatsBomb files are NOT redistributed here. fetch*.py download them from StatsBomb's public open-data repository; please follow
-StatsBomb's open-data terms (attribution is required) and check them before reuse. data_manifest.csv lists the exact 291 matches used (match id,
-competition, shot/pass counts) and fold_assignments.csv gives the match-level folds for repetitions 0-2.
+## 1. Setup
 
-Run order (from this folder):
-1. fetch.py       -> records.pkl   (events + 360 freeze frames; on-target label)
-2. fetch2.py      -> records2.pkl  (adds the goal-within-10s label)
-3. feats.py       -> built.pkl     (14 spatial features)
-4. exp.py         -> exp_raw.pkl   (shot-only baselines, ablations, separate-model CDS; out-of-fold predictions)
-5. analyze.py     -> results.json  (Table III, ablation point estimates, SHAP for label A)
-6. exp2.py        -> results2.json (unified model, xG baseline, ablation CIs, leave-one-competition-out, receiver validation; Tables IV-VII)
-7. fetch3.py      -> records3.pkl  (goal labels for horizons 5/10/15/20/30 s)
-8. exp4.py        -> results4.json (outcome-pathway sensitivity, Table VIII)
-9. extra_analyses.py -> err.json, shap2.json (AUC by distance tercile, SHAP for both labels)
-10. make_manifest.py -> data_manifest.csv, fold_assignments.csv
-11. check_paper_numbers.py  compares the values printed in the paper with the result files
-12. exp5a.py -> results5a.json, cds_rep0.npz (camera-ready analyses: shot/pass overlap, calibration of shots and passes under the goal label, ablation on the goal label; needs records3.pkl from fetch3.py)
-13. exp5b.py -> results5b.json (receiver validation with paired CIs, matching-threshold and visibility sensitivity, pass-completion model and feasibility-aware generator, CDS with the feasibility-aware generator)
-14. check_manuscript_vs_results.py manuscript.docx  verifies key numbers printed in the revised manuscript against results5a/b.json
-Expert review: expert_review_sheet.csv (40 cases) and expert_review_protocol.md describe the planned expert assessment of CDS; no expert ratings exist yet.
-Dataset version: dataset_version.txt records StatsBomb open-data commit 4b73468fc5b0f1950f9f66fada70ad3a4f9327cb (last changed 2026-09-07; data retrieved 22-28 Oct 2026).
-(exp3.py draws a calibration / CDS-distribution figure that is not used in the final paper.)
+- Python 3.10 or later
+- Install dependencies:
 
-Notes
-- Fold assignments: numpy default_rng(repetition index) over sorted match ids; model seed 42.
-- Bootstrap intervals are match-level (500 resamples for Table III, 300 for Tables IV, V and VII, 200 for Table VI and the distance terciles).
-- Table VIII uses one repetition; the downstream-only label approximates removing the shot's own goal (it ignores a second goal in the same window).
-- Clean-room check: steps 1-6 and 9-11 were rerun from scratch in an empty folder using only this package; all 393 numeric values in results.json, results2.json, shap2.json and err.json were identical to the originals, and the manifest and folds were byte-identical. Steps 7-8 and 12-13 (horizon sensitivity, overlap, calibration, receiver and feasibility analyses) were run once and were not part of that rerun. No third party has independently reproduced the results.
-- out-of-fold predictions are written to exp_raw.pkl by exp.py (not shipped because of size).
-- video_future_work/ is unevaluated and is not used by any number in the paper.
+```bash
+pip install -r requirements.txt
+```
+
+- `video_future_work/` additionally requires `ultralytics`, `opencv-python`, and `pandas`.
+- Internet access is required to download data from StatsBomb's public open-data repository.
+- One CPU core is sufficient. A complete run takes approximately 30–40 minutes, with `analyze.py` and `exp2.py` being the slowest steps.
+
+## 2. Dataset
+
+Raw StatsBomb data is **not included** in this repository. The `fetch*.py` scripts download the required data from StatsBomb's public open-data repository.
+
+Please follow StatsBomb's open-data terms and provide the required attribution when reusing the data.
+
+- `data_manifest.csv` lists the 291 matches used, including match IDs, competitions, and shot/pass counts.
+- `fold_assignments.csv` contains the match-level folds for repetitions 0–2.
+- `dataset_version.txt` records the StatsBomb open-data version used.
+
+## 3. Execution Order
+
+Run all commands from the project folder.
+
+| Step | Script | Output | Description |
+|---|---|---|---|
+| 1 | `fetch.py` | `records.pkl` | Downloads events and 360 freeze frames; generates the on-target label. |
+| 2 | `add_goal_label.py` | `records2.pkl` | Adds the goal-within-10-seconds label to the complete dataset. |
+| 3 | `feats.py` | `built.pkl` | Generates 14 spatial features. |
+| 4 | `exp.py` | `exp_raw.pkl` | Runs shot-only baselines, ablations, and separate-model CDS analysis. |
+| 5 | `analyze.py` | `results.json` | Generates Table III results, ablation estimates, and SHAP analysis for label A. |
+| 6 | `exp2.py` | `results2.json` | Runs unified-model experiments, xG baseline, ablation confidence intervals, leave-one-competition-out analysis, and receiver validation. |
+| 7 | `fetch3.py` | `records3.pkl` | Generates goal labels for 5, 10, 15, 20, and 30-second horizons. |
+| 8 | `exp4.py` | `results4.json` | Runs outcome-pathway sensitivity analysis (Table VIII). |
+| 9 | `extra_analyses.py` | `err.json`, `shap2.json` | Generates distance-tercile AUC and SHAP analyses for both labels. |
+| 10 | `make_manifest.py` | `data_manifest.csv`, `fold_assignments.csv` | Generates the dataset manifest and fold assignments. |
+| 11 | `check_paper_numbers.py` | — | Checks paper values against the generated result files. |
+| 12 | `exp5a.py` | `results5a.json`, `cds_rep0.npz` | Runs camera-ready analyses, including shot/pass overlap, calibration, and goal-label ablations. Requires `records3.pkl`. |
+| 13 | `exp5b.py` | `results5b.json` | Runs receiver validation, sensitivity analyses, pass-completion modelling, feasibility-aware candidate generation, and CDS analysis. |
+| 14 | `check_manuscript_vs_results.py` | — | Checks manuscript values against `results5a.json` and `results5b.json`. |
+
+**Note:** `exp3.py` generates calibration and CDS-distribution figures. These figures are not used in the final paper.
+
+## 4. Experimental Details
+
+- Match-level folds are generated using `numpy.default_rng` with the repetition index and sorted match IDs.
+- Model random seed: `42`.
+- Bootstrap confidence intervals use match-level resampling:
+  - 500 resamples for Table III.
+  - 300 resamples for Tables IV, V, and VII.
+  - 200 resamples for Table VI and distance-tercile analyses.
+- Table VIII uses one repetition. Its downstream-only label approximates removing the shot's own goal but does not account for a second goal within the same time window.
+
+## 5. Reproducibility
+
+A clean-room reproduction was performed in an empty folder using only this package.
+
+- Steps 1–6 and 9–11 were rerun successfully.
+- All 393 numeric values across `results.json`, `results2.json`, `shap2.json`, and `err.json` matched the original results.
+- The generated manifest and fold assignments were byte-identical.
+- Steps 7–8 and 12–13 were run once and were not included in the clean-room rerun.
+- No independent third-party reproduction has been conducted.
+
+The out-of-fold predictions generated by `exp.py` are stored in `exp_raw.pkl`. This file is not included in the repository because of its size.
+
+## 6. Expert Review
+
+`expert_review_sheet.csv` contains 40 cases, and `expert_review_protocol.md` describes the planned expert assessment of counterfactual decision scores (CDS).
+
+**No expert ratings have been collected yet.**
+
+## 7. Additional Files
+
+- `dataset_version.txt`: StatsBomb open-data commit `4b73468fc5b0f1950f9f66fada70ad3a4f9327cb`, last changed on 7 September 2026. Data was retrieved between 22 and 28 October 2026.
+- `video_future_work/`: Experimental future-work code. It has not been evaluated and is not used for any results reported in the paper.
